@@ -45,6 +45,9 @@ case "${LINUX}" in
       RK3288|RK3328|RK3399)
         PKG_PATCH_DIRS+=" rockchip-old"
         ;;
+      RK3288C)
+        PKG_PATCH_DIRS+=" rockchip-old chromiumos"
+        ;;
     esac
     ;;
 esac
@@ -76,6 +79,10 @@ fi
 
 if [ "${BOOTLOADER}" = "bcm2835-bootloader" -a "${TARGET_KERNEL_ARCH}" = "arm64" ]; then
   PKG_DEPENDS_TARGET+=" pigz:host"
+fi
+
+if [ "${BOOTLOADER}" = "depthcharge" ]; then
+  PKG_DEPENDS_TARGET+=" dtc:host u-boot-tools:host"
 fi
 
 # Ensure that the dependencies of initramfs:target are built correctly, but
@@ -311,6 +318,14 @@ make_target() {
 
 makeinstall_target() {
   mkdir -p ${INSTALL}/.image
+  if [ "${BOOTLOADER}" = "depthcharge" ]; then
+    cp ${PROJECT_DIR}/${PROJECT}/devices/${DEVICE}/linux/kernel.its .
+    mkimage -D "-I dts -O dtb -p 2048" \
+            -f kernel.its \
+               arch/${TARGET_KERNEL_ARCH}/boot/${KERNEL_TARGET}.fit
+    mv -f arch/${TARGET_KERNEL_ARCH}/boot/${KERNEL_TARGET}.fit \
+          arch/${TARGET_KERNEL_ARCH}/boot/${KERNEL_TARGET}
+  fi
   cp -p arch/${TARGET_KERNEL_ARCH}/boot/${KERNEL_TARGET} System.map .config Module.symvers ${INSTALL}/.image/
 
   kernel_make INSTALL_MOD_PATH=${INSTALL}/$(get_kernel_overlay_dir) modules_install

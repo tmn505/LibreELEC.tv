@@ -25,6 +25,7 @@ make_target() {
 }
 
 makeinstall_host() {
-  mkdir -p ${TOOLCHAIN}/bin
-    cp tools/mkimage ${TOOLCHAIN}/bin
+  mkdir -p ${TOOLCHAIN}/bin ${TOOLCHAIN}/share/u-boot/devkeys
+  cp tools/mkimage ${TOOLCHAIN}/bin
+  cp -R doc/chromium/files/devkeys ${TOOLCHAIN}/share/u-boot
 }
