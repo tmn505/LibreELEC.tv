@@ -66,6 +66,10 @@ if [ "${BOOTLOADER}" = "bcm2835-bootloader" -a "${TARGET_KERNEL_ARCH}" = "arm64"
   PKG_DEPENDS_TARGET+=" pigz:host"
 fi
 
+if [ "${BOOTLOADER}" = "depthcharge" ]; then
+  PKG_DEPENDS_TARGET+=" dtc:host u-boot-tools:host"
+fi
+
 # Ensure that the dependencies of initramfs:target are built correctly, but
 # we don't want to add initramfs:target as a direct dependency as we install
 # this "manually" from within linux:target
@@ -284,6 +288,14 @@ make_target() {
 
 makeinstall_target() {
   mkdir -p ${INSTALL}/.image
+  if [ "${BOOTLOADER}" = "depthcharge" ]; then
+    cp ${PROJECT_DIR}/${PROJECT}/devices/${DEVICE}/linux/kernel.its .
+    mkimage -D "-I dts -O dtb -p 2048" \
+            -f kernel.its \
+               arch/${TARGET_KERNEL_ARCH}/boot/${KERNEL_TARGET}.fit
+    mv -f arch/${TARGET_KERNEL_ARCH}/boot/${KERNEL_TARGET}.fit \
+          arch/${TARGET_KERNEL_ARCH}/boot/${KERNEL_TARGET}
+  fi
   cp -p arch/${TARGET_KERNEL_ARCH}/boot/${KERNEL_TARGET} System.map .config Module.symvers ${INSTALL}/.image/
 
   kernel_make INSTALL_MOD_PATH=${INSTALL}/$(get_kernel_overlay_dir) modules_install

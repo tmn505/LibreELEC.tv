@@ -1,0 +1,200 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026-present Team LibreELEC (https://libreelec.tv)
+
+# Crude LibreELEC eMMC installation script for Veyron Chromium OS devices
+
+model="$(cat /sys/firmware/devicetree/base/model)"
+case "${model}" in
+"Google Fievel"|\
+"Google Jaq"|\
+"Google Jerry"|\
+"Google Mickey"|\
+"Google Mighty"|\
+"Google Minnie"|\
+"Google Speedy"|\
+"Google Tiger")
+	printf "Platform: %s\n" "${model}"
+	;;
+*)
+	printf "Unsupported platform.\n"
+	exit 1
+	;;
+esac
+
+if [ -z "${1}" ]; then
+	printf "Needs update tar archive as an argument.\n"
+	exit 1
+else
+	tarball="${1}"
+fi
+
+case "${tarball}" in
+*.tar)
+	:
+	;;
+*)
+	printf "Not a tar archive.\n"
+	exit 1
+	;;
+esac
+
+if [ ! -x /usr/bin/cgpt ]; then
+	printf "vboot-utils not installed.\n"
+	exit 1
+fi
+
+if [ ! -x /usr/bin/futility ]; then
+	printf "vboot-utils not installed.\n"
+	exit 1
+fi
+
+if [ ! -x /usr/bin/mmc ]; then
+	printf "mmc-utils not installed.\n"
+	exit 1
+fi
+
+printf "Searching for eMMC and some of its capabilities\n"
+mmcs="$(find /dev/ -name 'mmcblk[0-9]')"
+for d in ${mmcs}; do
+	if [ -e ${d}rpmb ]; then
+		emmc=${d}
+	else
+		printf "Can't determine eMMC!\n"
+		exit 1
+	fi
+done
+
+padding=64
+wp_blocks="$(mmc writeprotect user get ${emmc} | grep Permanent | grep -o '(.*)' | grep -o '[0-9]*-[0-9]*' | awk -F- '{print $2 " - " $1}')"
+wp_size="$((${wp_blocks}))"
+rwfw_num="$(cgpt show ${emmc} | awk '/RWFW/ {print $3}' 2>/dev/null)"
+rwfw_size="$(cgpt show -i ${rwfw_num} -s ${emmc} 2>/dev/null)"
+if [ -z "${wp_size}" ]; then
+	begin_block="$((8192 + ${padding}))"
+else
+	if [ "${wp_size}" -ge "${rwfw_size}" ]; then
+		begin_block="$((${wp_size} + ${padding}))"
+	else
+		begin_block="$((${rwfw_size} + ${padding}))"
+	fi
+fi
+
+emmc_full_size="$(cat /sys/class/block/${emmc##*/}/size)"
+emmcb0_size="$(cat /sys/class/block/${emmc##*/}boot0/size)"
+emmcb1_size="$(cat /sys/class/block/${emmc##*/}boot1/size)"
+emmcrpmb_mp="$(printf '%d' $(cat /sys/class/block/${emmc##*/}/device/raw_rpmb_size_mult))"
+emmcrpmb_size="$(((${emmcrpmb_mp} * 128 * 1024) / 512))"
+emmc_size="$((${emmc_full_size} - ${emmcb0_size} - ${emmcb1_size} - ${emmcrpmb_size}))"
+
+kernel_size=65535
+start_system="$((${begin_block} + ${kernel_size} + 1))"
+system_size=1048575
+start_storage="$((${start_system} + ${system_size} + 1))"
+storage_size="$((${emmc_size} - ${start_storage} - ${start_system} - ${padding}))"
+start_second_gpt="$(cgpt show ${emmc} 2>/dev/null | awk '/Sec GPT header/ {printf $1}')"
+if [ "${storage_size}" -gt "${start_second_gpt}" ]; then
+	printf "Storage partition can't overlap with second GPT header! Bailing out!\n"
+	exit 1
+fi
+
+# Flags list: https://github.com/coreboot/vboot/raw/refs/heads/release-R84-13099.B/scripts/image_signing/gbb_flags_common.sh
+printf "\nINFORMATION\n"
+printf "This tool installs LibreELEC on internal eMMC of Chromium OS device.\n"
+printf "Before proceeding with this tool, it is advised to adjust GBB flags.\n"
+printf "Unfortunately setting Write Protection bit does not work outside\n"
+printf "Chrome/ium OS. Consider doing it before installing LibreELEC on eMMC.\n"
+printf "\nWARNING\n"
+printf "Installation is potentially destructive beacause of few assumptions,\n"
+printf "like Chrome/ium OS present on eMMC, original bootloader intact, etc.\n"
+printf "As always in such case, make sure You have a proper backup.\n"
+printf "Do You wish to proceed with installation? [Yes|No]\n"
+read -r answer
+case "${answer}" in
+Yes)
+	printf "Living on the edge? We like it, proceeding.\n\n"
+	;;
+*)
+	printf "Installation aborted.\n"
+	exit 0
+	;;
+esac
+
+printf "1. Removing most or all Chromium OS partitions\n"
+sync
+systemctl stop smbd.service
+systemctl mask 'udevil-mount@.service'
+for i in ${emmc}p*; do
+	mounted="$(mount | grep -c ${i})"
+	if [ "${mounted}" -gt "0" ]; then
+		printf "Unmounting: %s\n" ${i}
+		umount -f -A ${i}
+		sleep 2
+	fi
+
+	start="$(cgpt show -i ${i//*p/} -b ${emmc} 2>/dev/null)"
+	size="$(cgpt show -i ${i//*p/} -s ${emmc} 2>/dev/null)"
+	end="$((${start} + ${size}))"
+	if [ "${end}" -gt "${begin_block}" ]; then
+		if [ "${start}" -ge "${begin_block}" ]; then
+			cgpt add -i ${i//*p/} -t unused ${emmc}
+		fi
+	fi
+done
+partprobe
+sleep 3
+
+printf "2. Adding new partitions\n"
+cgpt add -i 3 -t kernel -b ${begin_block} -s ${kernel_size} -l kernel -S 1 -T 5 -P 1 ${emmc}
+cgpt add -i 1 -t data -b ${start_system} -s ${system_size} -l system ${emmc}
+cgpt add -i 2 -t data -b ${start_storage} -s ${storage_size} -l storage ${emmc}
+sync
+sleep 3
+partprobe
+sleep 1
+
+printf "3. Formatting new partitions\n"
+uuid_system="$(date '+%d%m')-$(date '+%M%S')"
+uuid_storage="$(uuidgen)"
+mkdosfs -n LIBREELEC -i "${uuid_system//-/}" ${emmc}p1
+mke2fs -F -t ext4 -O ^orphan_file -m 0 -L STORAGE -U "${uuid_storage}" ${emmc}p2
+
+printf "4. Installing files\n"
+mnt="$(mktemp -d)"
+mount ${emmc}p1 ${mnt}
+tar \
+	x \
+	--strip-components 1 \
+	-f ${tarball} \
+	-C ${mnt} \
+	--exclude */CHANGELOG \
+	--exclude */README.md \
+	--exclude */RELEASE \
+	--exclude */licenses
+mv ${mnt}/target/* ${mnt}/.
+rm -R ${mnt}/target
+sync
+
+printf "5. Writing kernel\n"
+awk '/rtc_/ {print $3}' /proc/driver/rtc > /tmp/date.txt
+sed -e "1s,$, boot=UUID=${uuid_system} disk=UUID=${uuid_storage}," \
+	/usr/share/bootloader/cmdline.txt > /tmp/cmdline.txt
+vbutil_kernel \
+	--arch arm \
+	--version 1 \
+	--bootloader /tmp/date.txt \
+	--config /tmp/cmdline.txt \
+	--keyblock /usr/share/vboot/devkeys/kernel.keyblock \
+	--signprivate /usr/share/vboot/devkeys/kernel_data_key.vbprivk \
+	--vmlinuz ${mnt}/KERNEL \
+	--pack /tmp/kernel.kpart
+dd if=/tmp/kernel.kpart of=${emmc}p3 conv=fsync,notrunc
+sync
+umount ${mnt}
+systemctl unmask 'udevil-mount@.service'
+systemctl start smbd.service
+
+printf "\nInstallation done. You can reboot the device and it should boot from eMMC.\n"
+printf "If some step didn't end successfully, the device will be able to boot\n"
+printf "from USB stick or SD card by pressing Ctrl+U on bootloader screen.\n"
