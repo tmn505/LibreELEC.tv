@@ -1,0 +1,142 @@
+/dts-v1/;
+
+/ {
+	description = "Chrome OS kernel image with one or more FDT blobs";
+	#address-cells = <1>;
+
+	images {
+		kernel {
+			description = "kernel";
+			data = /incbin/("arch/arm/boot/zImage");
+			type = "kernel_noload";
+			arch = "arm";
+			os = "linux";
+			compression = "none";
+			load = <0>;
+			entry = <0>;
+		};
+		fdt-veyron-fievel {
+			description = "rk3288-veyron-fievel.dtb";
+			data = /incbin/("arch/arm/boot/dts/rockchip/rk3288-veyron-fievel.dtb");
+			type = "flat_dt";
+			arch = "arm";
+			compression = "none";
+			hash {
+				algo = "sha1";
+			};
+		};
+		fdt-veyron-jaq {
+			description = "rk3288-veyron-jaq.dtb";
+			data = /incbin/("arch/arm/boot/dts/rockchip/rk3288-veyron-jaq.dtb");
+			type = "flat_dt";
+			arch = "arm";
+			compression = "none";
+			hash {
+				algo = "sha1";
+			};
+		};
+		fdt-veyron-jerry {
+			description = "rk3288-veyron-jerry.dtb";
+			data = /incbin/("arch/arm/boot/dts/rockchip/rk3288-veyron-jerry.dtb");
+			type = "flat_dt";
+			arch = "arm";
+			compression = "none";
+			hash {
+				algo = "sha1";
+			};
+		};
+		fdt-veyron-mickey {
+			description = "rk3288-veyron-mickey.dtb";
+			data = /incbin/("arch/arm/boot/dts/rockchip/rk3288-veyron-mickey.dtb");
+			type = "flat_dt";
+			arch = "arm";
+			compression = "none";
+			hash {
+				algo = "sha1";
+			};
+		};
+		fdt-veyron-mighty {
+			description = "rk3288-veyron-mighty.dtb";
+			data = /incbin/("arch/arm/boot/dts/rockchip/rk3288-veyron-mighty.dtb");
+			type = "flat_dt";
+			arch = "arm";
+			compression = "none";
+			hash {
+				algo = "sha1";
+			};
+		};
+		fdt-veyron-minnie {
+			description = "rk3288-veyron-minnie.dtb";
+			data = /incbin/("arch/arm/boot/dts/rockchip/rk3288-veyron-minnie.dtb");
+			type = "flat_dt";
+			arch = "arm";
+			compression = "none";
+			hash {
+				algo = "sha1";
+			};
+		};
+		fdt-veyron-speedy {
+			description = "rk3288-veyron-speedy.dtb";
+			data = /incbin/("arch/arm/boot/dts/rockchip/rk3288-veyron-speedy.dtb");
+			type = "flat_dt";
+			arch = "arm";
+			compression = "none";
+			hash {
+				algo = "sha1";
+			};
+		};
+		fdt-veyron-tiger {
+			description = "rk3288-veyron-tiger.dtb";
+			data = /incbin/("arch/arm/boot/dts/rockchip/rk3288-veyron-tiger.dtb");
+			type = "flat_dt";
+			arch = "arm";
+			compression = "none";
+			hash {
+				algo = "sha1";
+			};
+		};
+	};
+	configurations {
+		default = "conf-veyron-mickey";
+		conf-veyron-fievel {
+			description = "AOpen Chromebox Mini ME4100";
+			kernel = "kernel";
+			fdt = "fdt-veyron-fievel";
+		};
+		conf-veyron-jaq {
+			description = "Various Chromebooks";
+			kernel = "kernel";
+			fdt = "fdt-veyron-jaq";
+		};
+		conf-veyron-jerry {
+			description = "Various Chromebooks";
+			kernel = "kernel";
+			fdt = "fdt-veyron-jerry";
+		};
+		conf-veyron-mickey {
+			description = "ASUS Chromebit CS10";
+			kernel = "kernel";
+			fdt = "fdt-veyron-mickey";
+		};
+		conf-veyron-mighty {
+			description = "Various Chromebooks";
+			kernel = "kernel";
+			fdt = "fdt-veyron-mighty";
+		};
+		conf-veyron-minnie {
+			description = "ASUS Chromebook Flip C100";
+			kernel = "kernel";
+			fdt = "fdt-veyron-minnie";
+		};
+		conf-veyron-speedy {
+			description = "ASUS Chromebook C201";
+			kernel = "kernel";
+			fdt = "fdt-veyron-speedy";
+		};
+		conf-veyron-tiger {
+			description = "AOpen Chromebase Mini";
+			kernel = "kernel";
+			fdt = "fdt-veyron-tiger";
+		};
+	};
+};

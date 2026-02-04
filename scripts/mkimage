@@ -21,6 +21,9 @@ fi
 DISK_START_PADDING=$(( (${SYSTEM_PART_START} + 2048 - 1) / 2048 ))
 DISK_GPT_PADDING=1
 DISK_SIZE=$(( ${DISK_START_PADDING} + ${SYSTEM_SIZE} + ${STORAGE_SIZE} + ${DISK_GPT_PADDING} ))
+if [ "${BOOTLOADER}" = "depthcharge" ]; then
+  DISK_SIZE=$((${DISK_SIZE} + (${SYSTEM_PART_START} / 2048)))
+fi
 DISK_BASENAME="${TARGET_IMG}/${IMAGE_NAME}"
 DISK="${DISK_BASENAME}.img"
 
@@ -49,7 +52,7 @@ trap cleanup SIGINT
 echo -e "\nimage: creating sparse file for disk image ${DISK##*/}..."
 dd if=/dev/zero of="${DISK}" bs=1M count=0 seek="${DISK_SIZE}" conv=fsync >"${SAVE_ERROR}" 2>&1 || show_error
 
-if [ "${BOOTLOADER}" = "syslinux" ]; then
+if [ "${BOOTLOADER}" = "syslinux" -o "${BOOTLOADER}" = "depthcharge" ]; then
   DISK_LABEL=gpt
 else
   DISK_LABEL=msdos
@@ -71,6 +74,10 @@ if [ "${DISK_LABEL}" = "gpt" ]; then
   parted -s "${DISK}" -a min unit s mkpart system  fat32 ${SYSTEM_PART_START}  ${SYSTEM_PART_END}
   parted -s "${DISK}" -a min unit s mkpart storage ext4  ${STORAGE_PART_START} ${STORAGE_PART_END}
   parted -s "${DISK}" set 1 legacy_boot on
+  if [ "${BOOTLOADER}" = "depthcharge" ]; then
+    KERNEL_PART_SIZE=$(((${SYSTEM_PART_START} - 1) - 8192))
+    cgpt add -i 3 -t kernel -b 8192 -s ${KERNEL_PART_SIZE} -l kernel -S 1 -T 5 -P 1 "${DISK}"
+  fi
 else
   parted -s "${DISK}" -a min unit s mkpart primary fat32 ${SYSTEM_PART_START}  ${SYSTEM_PART_END}
   parted -s "${DISK}" -a min unit s mkpart primary ext4  ${STORAGE_PART_START} ${STORAGE_PART_END}
@@ -129,7 +136,7 @@ alias mmd='mmd -i "${LE_TMP}/part1.fat"'
 # create filesystem on part1
 echo "image: creating filesystem on part1..."
 
-if [ "${BOOTLOADER}" = "syslinux" -o "${BOOTLOADER}" = "bcm2835-bootloader" -o "${BOOTLOADER}" = "u-boot" ]; then
+if [ "${BOOTLOADER}" = "syslinux" -o "${BOOTLOADER}" = "bcm2835-bootloader" -o "${BOOTLOADER}" = "u-boot" -o "${BOOTLOADER}" = "depthcharge" ]; then
   mformat -i "${LE_TMP}/part1.fat" -v "${DISTRO_BOOTLABEL}" -N "${UUID_SYSTEM//-/}" :: >"${SAVE_ERROR}" 2>&1 || show_error
 fi
 sync
@@ -278,6 +285,27 @@ EOF
   mcopy "${TARGET_IMG}/${BUILD_NAME}.system" ::/SYSTEM >"${SAVE_ERROR}" 2>&1 || show_error
   mcopy "${RELEASE_DIR}/target/KERNEL.md5" "::/${KERNEL_NAME}.md5" >"${SAVE_ERROR}" 2>&1 || show_error
   mcopy "${RELEASE_DIR}/target/SYSTEM.md5" ::/SYSTEM.md5 >"${SAVE_ERROR}" 2>&1 || show_error
+
+elif [ "${BOOTLOADER}" = "depthcharge" ]; then
+  echo "image: copying files to part1..."
+  mcopy "${TARGET_IMG}/${BUILD_NAME}.kernel" "::/${KERNEL_NAME}" >"${SAVE_ERROR}" 2>&1 || show_error
+  mcopy "${TARGET_IMG}/${BUILD_NAME}.system" ::/SYSTEM >"${SAVE_ERROR}" 2>&1 || show_error
+  mcopy "${RELEASE_DIR}/target/KERNEL.md5" "::/${KERNEL_NAME}.md5" >"${SAVE_ERROR}" 2>&1 || show_error
+  mcopy "${RELEASE_DIR}/target/SYSTEM.md5" ::/SYSTEM.md5 >"${SAVE_ERROR}" 2>&1 || show_error
+
+  echo "image: merging kernel into disk image..."
+  echo "${EXTRA_CMDLINE} boot=UUID=${UUID_SYSTEM} disk=UUID=${UUID_STORAGE}" > "${LE_TMP}/cmdline.txt"
+  awk '/rtc_/ {print $3}' /proc/driver/rtc > "${LE_TMP}/date.txt"
+  vbutil_kernel \
+    --arch arm \
+    --version 1 \
+    --bootloader "${LE_TMP}/date.txt" \
+    --config "${LE_TMP}/cmdline.txt" \
+    --keyblock "${TOOLCHAIN}/share/u-boot/devkeys/kernel.keyblock" \
+    --signprivate "${TOOLCHAIN}/share/u-boot/devkeys/kernel_data_key.vbprivk" \
+    --vmlinuz "${TARGET_IMG}/${BUILD_NAME}.kernel" \
+    --pack "${LE_TMP}/${KERNEL_NAME}"
+  dd if="${LE_TMP}/${KERNEL_NAME}" of="${DISK}" bs=512 seek=8192 conv=fsync,notrunc >"${SAVE_ERROR}" 2>&1 || show_error
 
 elif [ "${BOOTLOADER}" = "u-boot" ]; then
   echo "to make an image using u-boot UBOOT_SYSTEM must be set"
