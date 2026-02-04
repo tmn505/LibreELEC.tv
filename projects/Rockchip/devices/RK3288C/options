@@ -1,0 +1,49 @@
+################################################################################
+# setup device defaults
+################################################################################
+
+  # Chromium OS devices have built-in bootloader
+    BOOTLOADER="depthcharge"
+
+  # Depthcharge accepts only signed payload with embedded FIT image
+    UBOOT_FIRMWARE=""
+
+  # The TARGET_CPU variable controls which processor should be targeted for
+  # generated code.
+    case $TARGET_ARCH in
+      arm)
+        TARGET_FLOAT="hard"
+        TARGET_CPU="cortex-a17"
+        TARGET_FPU="neon-vfpv4"
+        ;;
+    esac
+
+  # Kernel target
+    KERNEL_TARGET="zImage"
+
+  # Graphic drivers to use
+    GRAPHIC_DRIVERS="panfrost"
+
+  # Kernel serial console
+    EXTRA_CMDLINE="console=ttyS2,115200n8 console=tty0 coherent_pool=2M cec.debounce_ms=5000 cma=384M quiet"
+
+  # set the addon project
+    ADDON_PROJECT="ARMv7"
+
+  # Increase storage size in case of failed resize so Kodi won't crash
+    STORAGE_SIZE=64
+
+  # Start system partition at 32MiB to leave 28MiB for kernel partition
+    SYSTEM_PART_START=65536
+
+  # Firmware needed for WiFi and Bluetooth
+    FIRMWARE="veyron-firmware"
+
+  # Additional packages to install
+    ADDITIONAL_PACKAGES+=" flashrom-chromiumos mmc-utils vboot-utils"
+
+  # Default supported get handlers (archive, git, file etc.)
+    GET_HANDLER_SUPPORT="archive git"
+
+  # local console login prompt (yes / no)
+    LOCAL_LOGIN="yes"

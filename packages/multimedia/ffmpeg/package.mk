@@ -28,7 +28,7 @@ case "${PROJECT}" in
     ;;
   Rockchip)
     case "${DEVICE}" in
-      RK3288|RK3328|RK3399)
+      RK3288|RK3288C|RK3328|RK3399)
         PKG_PATCH_DIRS+=" v4l2-request v4l2-drmprime vf-deinterlace-v4l2m2m"
         ;;
       RK356X|RK3576|RK3588)
