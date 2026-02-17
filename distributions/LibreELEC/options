@@ -201,7 +201,7 @@
   DEBUG_GROUP_YES="kodi+"
 
 # wireless daemon to use (wpa_supplicant/iwd)
-  WIRELESS_DAEMON="iwd"
+  WIRELESS_DAEMON="wpa_supplicant"
 
 # build with NFS support (mounting nfs shares via the OS) (yes / no)
   NFS_SUPPORT="yes"
