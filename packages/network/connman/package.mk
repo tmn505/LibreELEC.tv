@@ -8,7 +8,7 @@ PKG_SHA256="e0f879af3dfe6c1e4ec1cc31d71af34ee01ed87892be6c596ee42990a17bac53"
 PKG_LICENSE="GPL"
 PKG_SITE="http://www.connman.net"
 PKG_URL="https://git.kernel.org/pub/scm/network/connman/connman.git/snapshot/connman-${PKG_VERSION}.tar.gz"
-PKG_DEPENDS_TARGET="autotools:host gcc:host dbus glib iptables iwd nftables readline"
+PKG_DEPENDS_TARGET="autotools:host gcc:host dbus glib iptables nftables readline"
 PKG_LONGDESC="A modular network connection manager."
 PKG_TOOLCHAIN="autotools"
 
@@ -42,15 +42,27 @@ PKG_CONFIGURE_OPTS_TARGET="--srcdir=.. \
                            --enable-datafiles \
                            --with-dbusconfdir=/usr/share \
                            --with-systemdunitdir=/usr/lib/systemd/system \
-                           --disable-silent-rules \
-                           --disable-wifi \
-                           --enable-iwd"
+                           --disable-silent-rules"
 
 if [ "${WIREGUARD_SUPPORT}" = "yes" ]; then
   PKG_CONFIGURE_OPTS_TARGET+=" --enable-wireguard=builtin"
 else
   PKG_CONFIGURE_OPTS_TARGET+=" --disable-wireguard"
 fi
+
+case "${WIRELESS_DAEMON}" in
+  wpa_supplicant)
+    PKG_DEPENDS_TARGET+=" wpa_supplicant"
+    PKG_CONFIGURE_OPTS_TARGET+=" WPASUPPLICANT=/usr/bin/wpa_supplicant \
+                                 --enable-wifi \
+                                 --disable-iwd"
+    ;;
+  iwd)
+    PKG_DEPENDS_TARGET+=" iwd"
+    PKG_CONFIGURE_OPTS_TARGET+=" --disable-wifi \
+                                 --enable-iwd"
+    ;;
+esac
 
 PKG_MAKE_OPTS_TARGET="storagedir=/storage/.cache/connman \
                       vpn_storagedir=/storage/.config/wireguard \

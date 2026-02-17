@@ -200,6 +200,9 @@
   DEBUG_GROUPS="kodi+=kodi+,kodi-platform+,p8-platform+,!mesa"
   DEBUG_GROUP_YES="kodi+"
 
+# wireless daemon to use (wpa_supplicant/iwd)
+  WIRELESS_DAEMON="iwd"
+
 # build with NFS support (mounting nfs shares via the OS) (yes / no)
   NFS_SUPPORT="yes"
 
