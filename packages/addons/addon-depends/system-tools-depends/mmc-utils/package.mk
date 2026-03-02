@@ -12,3 +12,4 @@ PKG_LONGDESC="Configure MMC storage devices from userspace."
 PKG_BUILD_FLAGS="-sysroot"
 
 PKG_MAKE_OPTS_TARGET+=" C="
+PKG_MAKEINSTALL_OPTS_TARGET+=" prefix=/usr C="
