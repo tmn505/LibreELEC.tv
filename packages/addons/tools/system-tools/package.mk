@@ -150,7 +150,7 @@ addon() {
     cp -Pa $(get_install_dir mc)/storage/.kodi/addons/virtual.system-tools/* ${ADDON_BUILD}/${PKG_ADDON_ID}
 
     # mmc-utils
-    cp -P $(get_install_dir mmc-utils)/usr/local/bin/mmc ${ADDON_BUILD}/${PKG_ADDON_ID}/bin
+    cp -P $(get_install_dir mmc-utils)/usr/bin/mmc ${ADDON_BUILD}/${PKG_ADDON_ID}/bin
 
     # mtpfs
     cp -P $(get_install_dir mtpfs)/usr/bin/mtpfs ${ADDON_BUILD}/${PKG_ADDON_ID}/bin/
