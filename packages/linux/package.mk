@@ -37,8 +37,8 @@ case "${LINUX}" in
     PKG_PATCH_DIRS="default rockchip"
     ;;
   *)
-    PKG_VERSION="6.18.8"
-    PKG_SHA256="37f0c5d5c242c1d604e87d48f08795e861a5a85f725b4ca11d0a538f12ff8cff"
+    PKG_VERSION="6.18.23"
+    PKG_SHA256="2a2d8e76bfcd135ab861bb9795211574eeff6d4ede9cc920f7c137587e835134"
     PKG_URL="https://www.kernel.org/pub/linux/kernel/v${PKG_VERSION/.*/}.x/${PKG_NAME}-${PKG_VERSION}.tar.xz"
     PKG_PATCH_DIRS="default"
     case ${DEVICE} in
